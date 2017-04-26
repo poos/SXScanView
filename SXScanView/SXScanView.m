@@ -8,6 +8,7 @@
 
 #import "SXScanView.h"
 #import <AVFoundation/AVFoundation.h>
+#import <AssetsLibrary/AssetsLibrary.h>
 #import "TZImagePickerController.h"
 
 #define Scaled(a) a
@@ -82,11 +83,11 @@
 }
 
 - (void)startScanning {
-    
+    [_session startRunning];
 }
 
 - (void)stopScanning {
-    
+    [_session stopRunning];
 }
 
 - (void)setResoultBlock:(void (^)(NSString *))resoultBlock {
@@ -117,6 +118,15 @@
 }
 
 - (void)selectedImage {
+    ALAuthorizationStatus author =[ALAssetsLibrary authorizationStatus];
+    if (author == ALAuthorizationStatusRestricted || author == ALAuthorizationStatusDenied) {
+        //无权限
+        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"提示" message:@"设备不支持访问相机,请到设置允许app访问相机" delegate:self cancelButtonTitle:nil otherButtonTitles:@"确认", nil];
+        alert.tag = 484;
+        [alert show];
+        //        _IsAllow = YES;
+        return;
+    }
     TZImagePickerController *imagePickerVc = [[TZImagePickerController alloc] initWithMaxImagesCount:1 delegate:nil];
     imagePickerVc.isSelectOriginalPhoto = YES;
     imagePickerVc.allowPickingVideo = NO;
@@ -136,6 +146,7 @@
             CIQRCodeFeature *feature = [features objectAtIndex:0];
             NSString *scannedResult = feature.messageString;
             if (_rerurnStringBlcok) {
+                AudioServicesPlaySystemSound(kSystemSoundID_Vibrate);
                 _rerurnStringBlcok(scannedResult);
             }
         }else{
@@ -230,7 +241,7 @@
     
 #elif TARGET_OS_IPHONE
     
-    NSString *mediaType = AVMediaTypeVideo;                                                         //读取媒体类型
+    NSString *mediaType = AVMediaTypeVideo;//读取媒体类型
     AVAuthorizationStatus authStatus = [AVCaptureDevice authorizationStatusForMediaType:mediaType]; //读取设备授权状态
     if (authStatus == AVAuthorizationStatusRestricted || authStatus == AVAuthorizationStatusDenied) {
         UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"提示" message:@"设备不支持访问相机,请到设置允许app访问相机" delegate:self cancelButtonTitle:nil otherButtonTitles:@"确认", nil];
@@ -310,6 +321,7 @@
         AVMetadataMachineReadableCodeObject *metadataObject = [metadataObjects objectAtIndex:0];
         NSString *scannedResult = metadataObject.stringValue;
         if (_rerurnStringBlcok) {
+            AudioServicesPlaySystemSound(kSystemSoundID_Vibrate);
             _rerurnStringBlcok(scannedResult);
         }
         if (!_isAutoScan) {
