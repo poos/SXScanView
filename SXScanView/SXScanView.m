@@ -1,0 +1,317 @@
+//
+//  SXScanView.m
+//  SingleViewDemo
+//
+//  Created by Shown on 2017/4/25.
+//  Copyright © 2017年 xiaoR. All rights reserved.
+//
+
+#import "SXScanView.h"
+#import <AVFoundation/AVFoundation.h>
+#import "TZImagePickerController.h"
+
+#define Scaled(a) a
+#define ScreenWidth [UIScreen mainScreen].bounds.size.width
+#define ScreenHeight [UIScreen mainScreen].bounds.size.height
+#define RGBA(r, g, b, a) [UIColor colorWithRed:r / 255.0 green:g / 255.0 blue:b / 255.0 alpha:a]
+
+@interface SXScanView () <AVCaptureMetadataOutputObjectsDelegate, UIAlertViewDelegate, AVCaptureVideoDataOutputSampleBufferDelegate,AVCaptureMetadataOutputObjectsDelegate,AVCaptureMetadataOutputObjectsDelegate> {
+    UIImage *_selectImage;
+    NSString *_signID;
+    BOOL _isCodeImage;
+    CGRect _imageRect;
+    UIButton *_lightBtn;
+    UIButton *_photoBtn;
+    TZImagePickerController *_imagePickerVc;
+}
+
+@property (strong, nonatomic) AVCaptureDevice *device;
+@property (strong, nonatomic) AVCaptureDeviceInput *input;
+@property (strong, nonatomic) AVCaptureMetadataOutput *output;
+@property (strong, nonatomic) AVCaptureVideoDataOutput *videoDataOutput; //图片输出
+@property (strong, nonatomic) AVCaptureSession *session;
+@property (strong, nonatomic) AVCaptureVideoPreviewLayer *preview;
+@property (copy, nonatomic) void(^rerurnStringBlcok)(NSString *);
+
+@end
+
+@implementation SXScanView
+
+- (void)setIsPhotoScan:(BOOL)isPhotoScan {
+    _photoBtn.hidden = !isPhotoScan;
+}
+
+- (void)setIsLight:(BOOL)isLight {
+    _lightBtn.hidden = !isLight;
+}
+
+- (void)scanPhotoAction {
+    [self selectedImage];
+}
+
+- (void)scanLightAction {
+    [self clickLightButton:_lightBtn];
+}
+
+- (void)clickLightButton:(UIButton *)button {
+    button.selected = !button.selected;
+    if (button.selected) {
+        [self turnTorchOn:YES];
+    } else {
+        [self turnTorchOn:NO];
+    }
+}
+#pragma mark-> 开关闪光灯
+- (void)turnTorchOn:(BOOL)on {
+    
+    Class captureDeviceClass = NSClassFromString(@"AVCaptureDevice");
+    if (captureDeviceClass != nil) {
+        AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+        if ([device hasTorch] && [device hasFlash]) {
+            [device lockForConfiguration:nil];
+            if (on) {
+                [device setTorchMode:AVCaptureTorchModeOn];
+                [device setFlashMode:AVCaptureFlashModeOn];
+            } else {
+                [device setTorchMode:AVCaptureTorchModeOff];
+                [device setFlashMode:AVCaptureFlashModeOff];
+            }
+            [device unlockForConfiguration];
+        }
+    }
+}
+
+- (void)startScanning {
+    
+}
+
+- (void)stopScanning {
+    
+}
+
+- (void)setResoultBlock:(void (^)(NSString *))resoultBlock {
+    _rerurnStringBlcok = resoultBlock;
+}
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        self.backgroundColor = [UIColor darkGrayColor];
+        
+    }
+    return self;
+}
+
+- (instancetype)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+    if (self) {
+        self.backgroundColor = [UIColor darkGrayColor];
+        [self defaultConfig];
+        [self setScanView];
+        
+        [self addLightButton];
+        [self addPhotoButton];
+    }
+    return self;
+}
+
+- (void)selectedImage {
+    TZImagePickerController *imagePickerVc = [[TZImagePickerController alloc] initWithMaxImagesCount:1 delegate:nil];
+    imagePickerVc.isSelectOriginalPhoto = YES;
+    imagePickerVc.allowPickingVideo = NO;
+    imagePickerVc.allowTakePicture = NO;    // 在内部显示拍照按钮
+    imagePickerVc.allowPickingImage = YES;    // 图片
+    imagePickerVc.sortAscendingByModificationDate = NO;  // 按时间升序
+    imagePickerVc.allowPickingOriginalPhoto = NO;  // 原图
+    imagePickerVc.allowPreview = NO;//预览
+    
+    [imagePickerVc setDidFinishPickingPhotosHandle:^(NSArray<UIImage *> *photos, NSArray *assets, BOOL isSelectOriginalPhoto) {
+        //
+        CIDetector *detector = [CIDetector detectorOfType:CIDetectorTypeQRCode context:nil options:@{CIDetectorAccuracy : CIDetectorAccuracyHigh}];
+        //监测到的结果数组
+        NSArray *features = [detector featuresInImage:[CIImage imageWithCGImage:photos[0].CGImage]];
+        if (features.count >=1) {
+            /**结果对象 */
+            CIQRCodeFeature *feature = [features objectAtIndex:0];
+            NSString *scannedResult = feature.messageString;
+            if (_rerurnStringBlcok) {
+                _rerurnStringBlcok(scannedResult);
+            }
+        }else{
+            if (_rerurnStringBlcok) {
+                _rerurnStringBlcok(nil);
+            }
+            [_session startRunning];
+        }
+    }];
+    [imagePickerVc setImagePickerControllerDidCancelHandle:^{
+        [_session startRunning];
+    }];
+    _imagePickerVc = imagePickerVc;
+    [[self viewController] presentViewController:_imagePickerVc animated:YES completion:^{
+        [_session stopRunning];
+    }];
+    _lightBtn.selected = NO;
+    [self turnTorchOn:NO];
+}
+
+- (UILabel *)createLabelWithTitle:(NSString *)title frame:(CGRect)frame textColor:(UIColor *)color fontSize:(CGFloat)size {
+    UILabel *label = [[UILabel alloc] initWithFrame:frame];
+    label.textAlignment = NSTextAlignmentCenter;
+    label.text = title;
+    label.textColor = color;
+    label.font = [UIFont systemFontOfSize:size];
+    return label;
+}
+
+- (void)setScanView {
+    UIView * view  = [[UIView alloc] initWithFrame:CGRectMake(0, 0, Scaled(1240), Scaled(1240))];
+    view.layer.borderWidth = Scaled(500);
+    view.layer.borderColor = RGBA(0, 0, 0, .3).CGColor;
+    view.center = CGPointMake(ScreenWidth/2, ScreenHeight/2 -40);
+    [self addSubview:view];
+    UIImageView * image = [[UIImageView alloc] initWithFrame:CGRectMake(ScreenWidth/2-Scaled(120), Scaled(164), Scaled(240), Scaled(240))];
+    image.image = [UIImage imageNamed:@"sxTakePhoto"];
+    image.center = CGPointMake(ScreenWidth/2, ScreenHeight/2 -40);
+    [self addSubview:image];
+    UILabel *tipLabel = [self createLabelWithTitle:@"将取景器对准要扫描的条形码或者二维码" frame:CGRectMake(0, Scaled(164-40), ScreenWidth, 20) textColor:RGBA(255, 255, 255, 1) fontSize:Scaled(14)];
+    tipLabel.textAlignment = NSTextAlignmentCenter;
+    [self addSubview:tipLabel];
+    UIView * viewLine = [[UIView alloc] initWithFrame:CGRectMake(ScreenWidth/2-120, ScreenHeight/2-40, 240, 1)];
+    viewLine.backgroundColor = RGBA(0, 0, 0, .05);
+    [self addSubview:viewLine];
+    
+    [_output setRectOfInterest:CGRectMake((image.frame.origin.y-Scaled(30)) / ScreenHeight,(image.frame.origin.x-Scaled(30)) / ScreenWidth,(image.frame.size.height+Scaled(60)) / ScreenHeight,(image.frame.size.width+Scaled(60)) / ScreenWidth)];
+    
+}
+
+//向上找到第一个controller
+- (UIViewController *)viewController {
+    UIResponder *responder = self;
+    while ((responder = [responder nextResponder]))
+        if ([responder isKindOfClass:[UIViewController class]])
+            return (UIViewController *) responder;
+    
+    return nil;
+}
+
+- (void)addPhotoButton {
+    //相册
+    UIButton * photoButton = [[UIButton alloc] initWithFrame:CGRectMake(ScreenWidth - Scaled(60), Scaled(24), Scaled(60),Scaled(70))];
+    [photoButton setTitle:@"相册" forState:UIControlStateNormal];
+    [photoButton addTarget:self action:@selector(selectedImage) forControlEvents:UIControlEventTouchUpInside];
+    [self addSubview:photoButton];
+    _photoBtn = photoButton;
+    _photoBtn.hidden = YES;
+}
+
+- (void)addLightButton {
+    //闪光灯
+    UIButton * lightButton = [[UIButton alloc] initWithFrame:CGRectMake(ScreenWidth/2 - Scaled(30), Scaled(164+240+60), Scaled(60),Scaled(70))];
+    [lightButton setBackgroundImage:[UIImage imageNamed:@"sxLamplightOpen"] forState:UIControlStateNormal];
+    [lightButton setBackgroundImage:[UIImage imageNamed:@"sxLamplightClose"] forState:UIControlStateSelected];
+    [lightButton addTarget:self action:@selector(clickLightButton:) forControlEvents:UIControlEventTouchUpInside];
+    [self addSubview:lightButton];
+    _lightBtn = lightButton;
+    _lightBtn.hidden = YES;
+}
+
+- (void)defaultConfig {
+#if TARGET_IPHONE_SIMULATOR//模拟器
+    
+#elif TARGET_OS_IPHONE
+    
+    NSString *mediaType = AVMediaTypeVideo;                                                         //读取媒体类型
+    AVAuthorizationStatus authStatus = [AVCaptureDevice authorizationStatusForMediaType:mediaType]; //读取设备授权状态
+    if (authStatus == AVAuthorizationStatusRestricted || authStatus == AVAuthorizationStatusDenied) {
+        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"提示" message:@"设备不支持访问相机,请到设置允许app访问相机" delegate:self cancelButtonTitle:nil otherButtonTitles:@"确认", nil];
+        alert.tag = 484;
+        [alert show];
+        //        _IsAllow = YES;
+        
+    } else {
+        _device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+        // Input
+        _input = [AVCaptureDeviceInput deviceInputWithDevice:self.device error:nil];
+        // Output
+        _output = [[AVCaptureMetadataOutput alloc] init];
+        [_output setMetadataObjectsDelegate:self queue:dispatch_get_main_queue()];
+        // Session
+        _session = [[AVCaptureSession alloc] init];
+        [_session setSessionPreset:AVCaptureSessionPresetHigh];
+        if ([_session canAddInput:self.input]) {
+            [_session addInput:self.input];
+        }
+        if ([_session canAddOutput:self.videoDataOutput]) {
+            [_session addOutput:self.videoDataOutput];
+        }
+        if ([_session canAddOutput:self.output]) {
+            [_session addOutput:self.output];
+        }
+        AVCaptureConnection *outputConnection = [_output connectionWithMediaType:AVMediaTypeVideo];
+        outputConnection.videoOrientation = [self videoOrientationFromCurrentDeviceOrientation];
+        _output.metadataObjectTypes=@[AVMetadataObjectTypeUPCECode,
+                                      AVMetadataObjectTypeCode39Code,
+                                      AVMetadataObjectTypeCode39Mod43Code,
+                                      AVMetadataObjectTypeEAN13Code,
+                                      AVMetadataObjectTypeEAN8Code,
+                                      AVMetadataObjectTypeCode93Code,
+                                      AVMetadataObjectTypeCode128Code,
+                                      AVMetadataObjectTypePDF417Code,
+                                      AVMetadataObjectTypeQRCode,
+                                      AVMetadataObjectTypeAztecCode,
+                                      AVMetadataObjectTypeInterleaved2of5Code,
+                                      AVMetadataObjectTypeITF14Code,
+                                      AVMetadataObjectTypeDataMatrixCode];
+        //只有二维码扫描
+        //        _output.metadataObjectTypes = @[ AVMetadataObjectTypeQRCode ];
+        // Preview
+        _preview = [AVCaptureVideoPreviewLayer layerWithSession:_session];
+        _preview.videoGravity = AVLayerVideoGravityResize;
+        _preview.frame = CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.width, [UIScreen mainScreen].bounds.size.height);
+        [self.layer insertSublayer:_preview atIndex:0];
+        _preview.connection.videoOrientation = [self videoOrientationFromCurrentDeviceOrientation];
+        [_session startRunning];
+    }
+    
+#endif
+}
+
+- (AVCaptureVideoOrientation)videoOrientationFromCurrentDeviceOrientation {
+    
+    UIInterfaceOrientation orientation = [[UIApplication sharedApplication] statusBarOrientation];
+    
+    if (orientation == UIInterfaceOrientationPortrait) {
+        return AVCaptureVideoOrientationPortrait;
+    } else if (orientation == UIInterfaceOrientationLandscapeLeft) {
+        return AVCaptureVideoOrientationLandscapeLeft;
+    } else if (orientation == UIInterfaceOrientationLandscapeRight) {
+        return AVCaptureVideoOrientationLandscapeRight;
+    } else if (orientation == UIInterfaceOrientationPortraitUpsideDown) {
+        return AVCaptureVideoOrientationPortraitUpsideDown;
+    }
+    
+    return AVCaptureVideoOrientationPortrait;
+}
+
+
+#pragma mark AVCaptureMetadataOutputObjectsDelegate -扫描结果
+- (void)captureOutput:(AVCaptureOutput *)captureOutput didOutputMetadataObjects:(NSArray *)metadataObjects fromConnection:(AVCaptureConnection *)connection {
+    if (metadataObjects.count > 0) {
+        AVMetadataMachineReadableCodeObject *metadataObject = [metadataObjects objectAtIndex:0];
+        NSString *scannedResult = metadataObject.stringValue;
+        if (_rerurnStringBlcok) {
+            _rerurnStringBlcok(scannedResult);
+        }
+        if (!_isAutoScan) {
+            [_session stopRunning];
+        }
+    }else{
+        if (_rerurnStringBlcok) {
+            _rerurnStringBlcok(nil);
+        }
+    }
+}
+
+@end
