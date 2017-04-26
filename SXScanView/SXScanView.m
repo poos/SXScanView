@@ -165,6 +165,14 @@
     return label;
 }
 
+- (UIImage *)bundleImageWithName:(NSString *)imageName {
+    NSBundle *myBundle = [NSBundle bundleForClass:[SXScanView class]];
+    NSURL *bundleUrl = [myBundle URLForResource:@"Resources" withExtension:@"bundle"];
+    NSBundle *imageBundle = [NSBundle bundleWithURL:bundleUrl];
+    NSString *path = [[imageBundle resourcePath]stringByAppendingPathComponent:imageName];
+    return [UIImage imageWithContentsOfFile:path];
+}
+
 - (void)setScanView {
     UIView * view  = [[UIView alloc] initWithFrame:CGRectMake(0, 0, Scaled(1240), Scaled(1240))];
     view.layer.borderWidth = Scaled(500);
@@ -172,7 +180,7 @@
     view.center = CGPointMake(ScreenWidth/2, ScreenHeight/2 -40);
     [self addSubview:view];
     UIImageView * image = [[UIImageView alloc] initWithFrame:CGRectMake(ScreenWidth/2-Scaled(120), Scaled(164), Scaled(240), Scaled(240))];
-    image.image = [UIImage imageNamed:@"sxTakePhoto"];
+    image.image = [self bundleImageWithName:@"sxTakePhoto"];
     image.center = CGPointMake(ScreenWidth/2, ScreenHeight/2 -40);
     [self addSubview:image];
     UILabel *tipLabel = [self createLabelWithTitle:@"将取景器对准要扫描的条形码或者二维码" frame:CGRectMake(0, Scaled(164-40), ScreenWidth, 20) textColor:RGBA(255, 255, 255, 1) fontSize:Scaled(14)];
@@ -209,8 +217,8 @@
 - (void)addLightButton {
     //闪光灯
     UIButton * lightButton = [[UIButton alloc] initWithFrame:CGRectMake(ScreenWidth/2 - Scaled(30), Scaled(164+240+60), Scaled(60),Scaled(70))];
-    [lightButton setBackgroundImage:[UIImage imageNamed:@"sxLamplightOpen"] forState:UIControlStateNormal];
-    [lightButton setBackgroundImage:[UIImage imageNamed:@"sxLamplightClose"] forState:UIControlStateSelected];
+    [lightButton setBackgroundImage:[self bundleImageWithName:@"sxLamplightOpen"] forState:UIControlStateNormal];
+    [lightButton setBackgroundImage:[self bundleImageWithName:@"sxLamplightClose"] forState:UIControlStateSelected];
     [lightButton addTarget:self action:@selector(clickLightButton:) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:lightButton];
     _lightBtn = lightButton;

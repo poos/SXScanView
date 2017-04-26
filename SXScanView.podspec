@@ -2,7 +2,7 @@
 Pod::Spec.new do |s|
 
   s.name         = "SXScanView"
-  s.version      = "0.0.2"
+  s.version      = "0.0.3"
   s.summary      = "easy scan qr code or bar code"
 
   s.homepage     = "https://github.com/poos/SXScanView"
@@ -17,7 +17,7 @@ Pod::Spec.new do |s|
 
   s.source_files  = "SXScanView/SXScanView.{h,m}"
 
-  s.resources = "SXScanView/Resources"
+  s.resources = "SXScanView/Resources.bundle"
 
   s.requires_arc = true
 
