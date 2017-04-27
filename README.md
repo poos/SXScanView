@@ -16,6 +16,7 @@ _scanView = [[SXScanView alloc] initWithFrame:self.view.bounds];
     [self.view addSubview:_scanView];
     __weak ScanController *weakSelf = self;
     [_scanView setResoultBlock:^(NSString *returnStr) {
+    //处理 Example:
         [weakSelf checkResoultString:returnStr];
     }];
 
