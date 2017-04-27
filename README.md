@@ -1,7 +1,7 @@
 # SXScanView
 
 
-![img](ex.gif)  
+![img](ex.jpg)  
 
 ## 1.improt & use
 可以用pod导入pod 'SXScanView', '~>0.0.4'
