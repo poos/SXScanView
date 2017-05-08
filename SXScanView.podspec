@@ -2,7 +2,7 @@
 Pod::Spec.new do |s|
 
   s.name         = "SXScanView"
-  s.version      = "0.0.4"
+  s.version      = "0.0.5"
   s.summary      = "easy scan qr code or bar code"
 
   s.homepage     = "https://github.com/poos/SXScanView"

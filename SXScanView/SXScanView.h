@@ -41,9 +41,11 @@
 // 是否连续扫描,YES则扫到结果不会停止- 默认NO(下次扫描要手动start)
 @property (nonatomic, assign) BOOL isAutoScan;
 
-// 对应的方法,打开photo,直接调用
+// 相册按钮 对应的方法,打开photo,直接调用
 - (void)scanPhotoAction;
-// 对应的方法,开关闪光灯,直接调用
+// 闪光灯按钮 对应的方法,开关闪光灯,直接调用
 - (void)scanLightAction;
+// 关闭闪光灯
+- (void)setOffLight;
 
 @end

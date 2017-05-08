@@ -54,6 +54,11 @@
     [self clickLightButton:_lightBtn];
 }
 
+- (void)setOffLight {
+    _lightBtn.selected = NO;
+    [self turnTorchOn:NO];
+}
+
 - (void)clickLightButton:(UIButton *)button {
     button.selected = !button.selected;
     if (button.selected) {
