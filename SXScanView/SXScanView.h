@@ -21,19 +21,26 @@
  
  */
 
-
+#pragma mark ------必须设置的-------
+/**
+ 初始化方法,设置frame
+ */
+- (instancetype)initWithFrame:(CGRect)frame;
 /*
  扫描成功的回调
  失败返回nil
  */
 - (void)setResoultBlock:(void(^)(NSString *returnStr))resoultBlock;
 
-//开始结束
+//开始结束,如果设置无效考虑在主线程调用
 - (void)startScanning;
 - (void)stopScanning;
 
 
-#pragma mark ------optional-------
+#pragma mark ------可选的-------
+
+//不使用单例- 默认使用单例
++ (void)configNotUseSingleton:(BOOL)notSingleton;
 // 是否支持相册扫描- 默认NO
 @property (nonatomic, assign) BOOL isPhotoScan;
 // 是否支持闪光灯- 默认NO

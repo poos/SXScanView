@@ -16,6 +16,9 @@
 #define ScreenHeight [UIScreen mainScreen].bounds.size.height
 #define RGBA(r, g, b, a) [UIColor colorWithRed:r / 255.0 green:g / 255.0 blue:b / 255.0 alpha:a]
 
+static BOOL sxScanViewNotUseSingleton = NO;
+static SXScanView *sxScanView = nil;
+
 @interface SXScanView () <AVCaptureMetadataOutputObjectsDelegate, UIAlertViewDelegate, AVCaptureVideoDataOutputSampleBufferDelegate,AVCaptureMetadataOutputObjectsDelegate,AVCaptureMetadataOutputObjectsDelegate> {
     UIImage *_selectImage;
     NSString *_signID;
@@ -37,6 +40,11 @@
 @end
 
 @implementation SXScanView
+
+
++ (void)configNotUseSingleton:(BOOL)notSingleton {
+    sxScanViewNotUseSingleton = notSingleton;
+}
 
 - (void)setIsPhotoScan:(BOOL)isPhotoScan {
     _photoBtn.hidden = !isPhotoScan;
@@ -99,27 +107,28 @@
     _rerurnStringBlcok = resoultBlock;
 }
 
-- (instancetype)init
-{
-    self = [super init];
-    if (self) {
-        self.backgroundColor = [UIColor darkGrayColor];
-        
-    }
-    return self;
+- (instancetype)init {
+    return [self initWithFrame:CGRectZero];
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
-    self = [super initWithFrame:frame];
-    if (self) {
+    //用单例
+    if (!sxScanViewNotUseSingleton && sxScanView) {
+        sxScanView.frame = frame;
+        return sxScanView;
+    }
+    //不用单例
+    sxScanView = [super initWithFrame:frame];
+    if (sxScanView) {
         self.backgroundColor = [UIColor darkGrayColor];
         [self defaultConfig];
         [self setScanView];
         
         [self addLightButton];
         [self addPhotoButton];
+        self.clipsToBounds = YES;
     }
-    return self;
+    return sxScanView;
 }
 
 - (void)selectedImage {
