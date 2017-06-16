@@ -11,18 +11,16 @@
 #import <AssetsLibrary/AssetsLibrary.h>
 #import "TZImagePickerController.h"
 
-#define Scaled(a) a
 #define ScreenWidth [UIScreen mainScreen].bounds.size.width
 #define ScreenHeight [UIScreen mainScreen].bounds.size.height
+#define Scaled(a) ((int) ((a) * ScreenWidth / 375))
 #define RGBA(r, g, b, a) [UIColor colorWithRed:r / 255.0 green:g / 255.0 blue:b / 255.0 alpha:a]
 
-static BOOL sxScanViewNotUseSingleton = NO;
-static SXScanView *sxScanView = nil;
-
-@interface SXScanView () <AVCaptureMetadataOutputObjectsDelegate, UIAlertViewDelegate, AVCaptureVideoDataOutputSampleBufferDelegate,AVCaptureMetadataOutputObjectsDelegate,AVCaptureMetadataOutputObjectsDelegate> {
+@interface SXScanView () <AVCaptureMetadataOutputObjectsDelegate, UIAlertViewDelegate, AVCaptureVideoDataOutputSampleBufferDelegate,AVCaptureMetadataOutputObjectsDelegate, AVCaptureMetadataOutputObjectsDelegate> {
     UIImage *_selectImage;
     NSString *_signID;
     BOOL _isCodeImage;
+    UIImageView *_scanImageView;
     CGRect _imageRect;
     UIButton *_lightBtn;
     UIButton *_photoBtn;
@@ -41,11 +39,6 @@ static SXScanView *sxScanView = nil;
 
 @implementation SXScanView
 
-
-+ (void)configNotUseSingleton:(BOOL)notSingleton {
-    sxScanViewNotUseSingleton = notSingleton;
-}
-
 - (void)setIsPhotoScan:(BOOL)isPhotoScan {
     _photoBtn.hidden = !isPhotoScan;
 }
@@ -60,11 +53,6 @@ static SXScanView *sxScanView = nil;
 
 - (void)scanLightAction {
     [self clickLightButton:_lightBtn];
-}
-
-- (void)setOffLight {
-    _lightBtn.selected = NO;
-    [self turnTorchOn:NO];
 }
 
 - (void)clickLightButton:(UIButton *)button {
@@ -107,38 +95,45 @@ static SXScanView *sxScanView = nil;
     _rerurnStringBlcok = resoultBlock;
 }
 
-- (instancetype)init {
-    return [self initWithFrame:CGRectZero];
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        self.backgroundColor = [UIColor darkGrayColor];
+        
+    }
+    return self;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
-    //用单例
-    if (!sxScanViewNotUseSingleton && sxScanView) {
-        sxScanView.frame = frame;
-        return sxScanView;
-    }
-    //不用单例
-    sxScanView = [super initWithFrame:frame];
-    if (sxScanView) {
+    self = [super initWithFrame:frame];
+    if (self) {
         self.backgroundColor = [UIColor darkGrayColor];
         [self defaultConfig];
         [self setScanView];
         
         [self addLightButton];
         [self addPhotoButton];
-        self.clipsToBounds = YES;
     }
-    return sxScanView;
+    return self;
 }
 
 - (void)selectedImage {
     ALAuthorizationStatus author =[ALAssetsLibrary authorizationStatus];
     if (author == ALAuthorizationStatusRestricted || author == ALAuthorizationStatusDenied) {
         //无权限
-        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"提示" message:@"设备不支持访问相机,请到设置允许app访问相机" delegate:self cancelButtonTitle:nil otherButtonTitles:@"确认", nil];
-        alert.tag = 484;
-        [alert show];
-        //        _IsAllow = YES;
+        if ([UIDevice currentDevice].systemVersion.floatValue >= 8.0f) {
+            [[UIApplication sharedApplication] openURL:[NSURL URLWithString:UIApplicationOpenSettingsURLString]];
+        } else {
+            NSURL *privacyUrl = [NSURL URLWithString:@"prefs:root=Privacy&path=CAMERA"];
+            if ([[UIApplication sharedApplication] canOpenURL:privacyUrl]) {
+                [[UIApplication sharedApplication] openURL:privacyUrl];
+            } else {
+                NSString *message = @"不能跳转到设置页面, 请到\"设置-隐私-照片\"选项允许app访问手机相册";
+                UIAlertView * alert = [[UIAlertView alloc]initWithTitle:@"提醒" message:message delegate:nil cancelButtonTitle:[NSBundle tz_localizedStringForKey:@"确定"] otherButtonTitles: nil];
+                [alert show];
+            }
+        }
         return;
     }
     TZImagePickerController *imagePickerVc = [[TZImagePickerController alloc] initWithMaxImagesCount:1 delegate:nil];
@@ -204,11 +199,11 @@ static SXScanView *sxScanView = nil;
     view.layer.borderColor = RGBA(0, 0, 0, .3).CGColor;
     view.center = CGPointMake(ScreenWidth/2, ScreenHeight/2 -40);
     [self addSubview:view];
-    UIImageView * image = [[UIImageView alloc] initWithFrame:CGRectMake(ScreenWidth/2-Scaled(120), Scaled(164), Scaled(240), Scaled(240))];
+    UIImageView * image = [[UIImageView alloc] initWithFrame:CGRectMake(ScreenWidth/2-Scaled(120), Scaled(184), Scaled(240), Scaled(240))];
     image.image = [self bundleImageWithName:@"sxTakePhoto"];
     image.center = CGPointMake(ScreenWidth/2, ScreenHeight/2 -40);
     [self addSubview:image];
-    UILabel *tipLabel = [self createLabelWithTitle:@"将取景器对准要扫描的条形码或者二维码" frame:CGRectMake(0, Scaled(164-40), ScreenWidth, 20) textColor:RGBA(255, 255, 255, 1) fontSize:Scaled(14)];
+    UILabel *tipLabel = [self createLabelWithTitle:@"将取景器对准要扫描的条形码或者二维码" frame:CGRectMake(0, image.frame.origin.y - Scaled(40), ScreenWidth, 20) textColor:RGBA(255, 255, 255, 1) fontSize:Scaled(14)];
     tipLabel.textAlignment = NSTextAlignmentCenter;
     [self addSubview:tipLabel];
     UIView * viewLine = [[UIView alloc] initWithFrame:CGRectMake(ScreenWidth/2-120, ScreenHeight/2-40, 240, 1)];
@@ -217,6 +212,7 @@ static SXScanView *sxScanView = nil;
     
     [_output setRectOfInterest:CGRectMake((image.frame.origin.y-Scaled(30)) / ScreenHeight,(image.frame.origin.x-Scaled(30)) / ScreenWidth,(image.frame.size.height+Scaled(60)) / ScreenHeight,(image.frame.size.width+Scaled(60)) / ScreenWidth)];
     
+    _scanImageView = image;
 }
 
 //向上找到第一个controller
@@ -241,7 +237,7 @@ static SXScanView *sxScanView = nil;
 
 - (void)addLightButton {
     //闪光灯
-    UIButton * lightButton = [[UIButton alloc] initWithFrame:CGRectMake(ScreenWidth/2 - Scaled(30), Scaled(164+240+60), Scaled(60),Scaled(70))];
+    UIButton * lightButton = [[UIButton alloc] initWithFrame:CGRectMake(ScreenWidth/2 - Scaled(30), _scanImageView.frame.origin.y + _scanImageView.frame.size.height + Scaled(40), Scaled(60),Scaled(70))];
     [lightButton setBackgroundImage:[self bundleImageWithName:@"sxLamplightOpen"] forState:UIControlStateNormal];
     [lightButton setBackgroundImage:[self bundleImageWithName:@"sxLamplightClose"] forState:UIControlStateSelected];
     [lightButton addTarget:self action:@selector(clickLightButton:) forControlEvents:UIControlEventTouchUpInside];
@@ -258,10 +254,18 @@ static SXScanView *sxScanView = nil;
     NSString *mediaType = AVMediaTypeVideo;//读取媒体类型
     AVAuthorizationStatus authStatus = [AVCaptureDevice authorizationStatusForMediaType:mediaType]; //读取设备授权状态
     if (authStatus == AVAuthorizationStatusRestricted || authStatus == AVAuthorizationStatusDenied) {
-        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:@"提示" message:@"设备不支持访问相机,请到设置允许app访问相机" delegate:self cancelButtonTitle:nil otherButtonTitles:@"确认", nil];
-        alert.tag = 484;
-        [alert show];
-        //        _IsAllow = YES;
+        UIAlertController *alertVc = [UIAlertController alertControllerWithTitle:@"提醒" message:@"设备不支持访问相机, 请到\"设置-隐私-照片\"选项允许app访问手机相机" preferredStyle:UIAlertControllerStyleAlert];
+        [alertVc addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            if ([UIDevice currentDevice].systemVersion.floatValue >= 8.0f) {
+                [[UIApplication sharedApplication] openURL:[NSURL URLWithString:UIApplicationOpenSettingsURLString]];
+            } else {
+                NSURL *privacyUrl = [NSURL URLWithString:@"prefs:root=Privacy&path=PHOTOS"];
+                if ([[UIApplication sharedApplication] canOpenURL:privacyUrl]) {
+                    [[UIApplication sharedApplication] openURL:privacyUrl];
+                }
+            }
+        }]];
+        [[[UIApplication sharedApplication].delegate window].rootViewController presentViewController:alertVc animated:YES completion:nil];
         
     } else {
         _device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
