@@ -4,7 +4,7 @@
 ![img](ex.jpg)  
 
 ## 1.improt & use
-可以用pod导入pod 'SXScanView', '~>0.0.4'
+可以用pod导入pod 'SXScanView', '~>0.2.0'
 
 也可以直接复制文件夹使用
 ```
