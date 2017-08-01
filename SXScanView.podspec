@@ -2,7 +2,7 @@
 Pod::Spec.new do |s|
 
   s.name         = "SXScanView"
-  s.version      = "0.1.0"
+  s.version      = "0.1.1"
   s.summary      = "easy scan qr code or bar code"
 
   s.homepage     = "https://github.com/poos/SXScanView"
@@ -21,5 +21,5 @@ Pod::Spec.new do |s|
 
   s.requires_arc = true
 
-  s.dependency "TZImagePickerController", "~> 1.7.9"
+  s.dependency "TZImagePickerController", "1.8.1"
 end

@@ -114,6 +114,7 @@
         
         [self addLightButton];
         [self addPhotoButton];
+        self.clipsToBounds = YES;
     }
     return self;
 }
@@ -199,7 +200,7 @@
     view.layer.borderColor = RGBA(0, 0, 0, .3).CGColor;
     view.center = CGPointMake(ScreenWidth/2, ScreenHeight/2 -40);
     [self addSubview:view];
-    UIImageView * image = [[UIImageView alloc] initWithFrame:CGRectMake(ScreenWidth/2-Scaled(120), Scaled(184), Scaled(240), Scaled(240))];
+    UIImageView * image = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, Scaled(240), Scaled(240))];
     image.image = [self bundleImageWithName:@"sxTakePhoto"];
     image.center = CGPointMake(ScreenWidth/2, ScreenHeight/2 -40);
     [self addSubview:image];
